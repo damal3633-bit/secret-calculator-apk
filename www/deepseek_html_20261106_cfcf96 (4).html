@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<title>Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: radial-gradient(120% 90% at 50% 0%, #161a22 0%, #0a0c10 55%, #06070a 100%);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    min-height: 100dvh; overflow: hidden; user-select: none; -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .app {
+    position: relative; width: 100%; max-width: 430px; height: 100dvh; max-height: 940px;
+    background: #0f1116; overflow: hidden; display: flex; flex-direction: column;
+  }
+  @media (min-width: 520px) and (min-height: 720px) {
+    .app { height: 92dvh; border-radius: 34px;
+      box-shadow: 0 30px 90px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.07), 0 0 0 8px rgba(255,255,255,.02); }
+  }
+  .panel { position: absolute; inset: 0; display: flex; flex-direction: column;
+    opacity: 1; transition: opacity .26s ease, transform .26s ease, visibility .26s; }
+  .panel.hidden { opacity: 0; transform: scale(.975); visibility: hidden; pointer-events: none; }
+
+  #calculator {
+    background: radial-gradient(120% 60% at 50% 0%, #1a1f27 0%, rgba(26,31,39,0) 60%),
+                linear-gradient(180deg, #14171d 0%, #0d0f13 55%, #080a0d 100%);
+  }
+  .screen { flex: 1 1 34%; min-height: 0; display: flex; flex-direction: column;
+    justify-content: flex-end; align-items: flex-end;
+    padding: calc(22px + env(safe-area-inset-top)) 24px 12px; overflow: hidden; }
+  .history { font-size: 15px; line-height: 20px; height: 20px; color: #6b7381;
+    letter-spacing: .6px; white-space: nowrap; overflow: hidden; max-width: 100%;
+    font-variant-numeric: tabular-nums; }
+  .display { width: 100%; margin-top: 6px; text-align: right; font-size: 52px;
+    font-weight: 300; line-height: 1.12; letter-spacing: -1.5px; color: #fff;
+    white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 24px rgba(255,255,255,.08); transition: font-size .08s linear; }
+  .keys { flex: 1 1 66%; min-height: 0; display: grid; grid-template-columns: repeat(4,1fr);
+    grid-template-rows: repeat(5,1fr); gap: 11px;
+    padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .key { min-height: 0; border: 0; border-radius: 20px; font-family: inherit;
+    font-size: clamp(19px,5.4vw,26px); font-weight: 500; color: #f2f5f9;
+    background: linear-gradient(180deg,#2a2f38 0%,#21252d 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 6px 14px rgba(0,0,0,.38);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: transform .09s ease, filter .16s ease, box-shadow .09s ease; outline: none; }
+  .key:hover { filter: brightness(1.14); }
+  .key:active { transform: scale(.93); filter: brightness(1.32);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 2px 6px rgba(0,0,0,.45); }
+  .key.fn { background: linear-gradient(180deg,#3d444f 0%,#2f353e 100%); color: #cfd6e0; font-weight: 600; }
+  .key.op { background: linear-gradient(180deg,#ffb64d 0%,#ff9f0a 100%); color: #20160a; font-weight: 700;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 6px 18px rgba(255,159,10,.26); }
+  .key.eq { background: linear-gradient(180deg,#ffc878 0%,#ff9f0a 100%); color: #20160a; font-weight: 800;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 8px 22px rgba(255,159,10,.35); }
+  .key.zero { grid-column: span 2; }
+  .key svg { display: block; }
+
+  #vault {
+    background: radial-gradient(140% 90% at 50% 0%, #1b2433 0%, rgba(27,36,51,0) 60%),
+                linear-gradient(180deg,#0e1219 0%,#0a0d12 60%,#07090c 100%);
+  }
+  .vault-header { display: flex; align-items: center; gap: 10px;
+    padding: calc(16px + env(safe-area-inset-top)) 18px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.06); flex: 0 0 auto; }
+  .back-btn { display: inline-flex; align-items: center; gap: 5px;
+    padding: 9px 14px 9px 10px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.06);
+    color: #e6e9ef; font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background .18s ease, transform .09s ease; }
+  .back-btn:hover { background: rgba(255,255,255,.12); }
+  .back-btn:active { transform: scale(.95); }
+  .vault-title { margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+    font-size: 15px; font-weight: 700; letter-spacing: .4px; color: #e8edf5; }
+  .vault-title svg { color: #ffb84d; }
+
+  .vault-tabs { display: flex; gap: 8px; padding: 12px 18px 0; flex: 0 0 auto; }
+  .tab { flex: 1; padding: 11px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04);
+    color: #9aa4b2; font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all .18s ease; }
+  .tab.active { background: linear-gradient(180deg,#ffc878,#ff9f0a); color: #1b1206;
+    border-color: transparent; box-shadow: 0 8px 20px rgba(255,159,10,.25); }
+
+  .vault-body { flex: 1; min-height: 0; display: flex; flex-direction: column;
+    padding: 14px 20px calc(22px + env(safe-area-inset-bottom)); }
+  .pane { display: none; flex: 1; min-height: 0; }
+  .pane.active { display: flex; flex-direction: column; }
+  #pane-upload.active { overflow-y: auto; }
+  #pane-upload .upload-card { margin: auto 0; }
+  #pane-gallery.active { overflow-y: auto; }
+  #pane-gallery > * { flex-shrink: 0; }
+
+  .upload-card { width: 100%; padding: 26px 20px 22px; border-radius: 24px;
+    background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 24px 60px rgba(0,0,0,.45); text-align: center; }
+  .card-icon { width: 62px; height: 62px; margin: 0 auto 16px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, rgba(255,159,10,.22), rgba(255,159,10,.08));
+    border: 1px solid rgba(255,159,10,.3); color: #ffb84d; }
+  .upload-card h2 { font-size: 19px; font-weight: 700; margin-bottom: 20px; color: #f4f7fb; }
+  .pick-btn { display: flex; align-items: center; justify-content: center; gap: 9px;
+    width: 100%; padding: 15px; border-radius: 14px;
+    background: rgba(255,255,255,.06); border: 1px dashed rgba(255,255,255,.22);
+    color: #dbe2ec; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background .18s ease, border-color .18s ease; }
+  .pick-btn:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.36); }
+  .file-name { margin-top: 12px; font-size: 12.5px; color: #7a8494; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; min-height: 18px; }
+  .file-name.has-file { color: #7fd1a5; font-weight: 600; }
+  .upload-btn { width: 100%; margin-top: 14px; padding: 16px; border: 0; border-radius: 14px;
+    background: linear-gradient(180deg,#ffc878 0%,#ff9f0a 100%); color: #1b1206;
+    font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: .4px;
+    cursor: pointer; box-shadow: 0 10px 26px rgba(255,159,10,.28);
+    transition: transform .1s ease, filter .2s ease, opacity .2s ease; }
+  .upload-btn:not(:disabled):active { transform: scale(.97); }
+  .upload-btn:disabled { opacity: .38; cursor: not-allowed; box-shadow: none; filter: grayscale(.5); }
+
+  .gallery-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
+  .gallery-count { font-size: 13px; color: #8b95a5; font-weight: 600; }
+  .refresh-btn { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto;
+    padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1);
+    background: rgba(255,255,255,.05); color: #cfd6e0; font-family: inherit;
+    font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .refresh-btn:active { transform: scale(.95); }
+  .gallery-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .thumb { position: relative; aspect-ratio: 1 / 1; border-radius: 12px;
+    overflow: hidden; background: #1a1e26; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.06); }
+  .thumb:active { transform: scale(.95); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb-ph { position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-size: 26px; opacity: .55; }
+  .thumb .play { position: absolute; inset: 0; display: flex;
+    align-items: center; justify-content: center; color: #fff;
+    background: rgba(0,0,0,.18); filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+  .thumb .badge { position: absolute; bottom: 5px; right: 5px;
+    background: rgba(0,0,0,.72); border-radius: 6px; padding: 2px 6px;
+    font-size: 9.5px; font-weight: 700; color: #e6e9ef; }
+  .gallery-loading { display: flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 40px 16px; color: #8b95a5; font-size: 13.5px; font-weight: 600; }
+  .gallery-empty { text-align: center; padding: 40px 16px; color: #6b7381; font-size: 13.5px; line-height: 1.6; }
+  .gallery-empty .big { display: block; font-size: 40px; margin-bottom: 10px; opacity: .5; }
+  .gallery-error { text-align: center; padding: 28px 16px; color: #f87171;
+    font-size: 13px; line-height: 1.5; background: rgba(248,113,113,.08);
+    border: 1px solid rgba(248,113,113,.25); border-radius: 12px; margin-bottom: 12px; }
+
+  .viewer { position: absolute; inset: 0; z-index: 60; background: rgba(5,7,10,.97);
+    display: flex; align-items: center; justify-content: center;
+    padding: 64px 16px 24px; opacity: 0; visibility: hidden;
+    transition: opacity .2s ease, visibility .2s; }
+  .viewer.show { opacity: 1; visibility: visible; }
+  .viewer-content { width: 100%; height: 100%; display: flex;
+    align-items: center; justify-content: center; }
+  .viewer-content img { max-width: 100%; max-height: 100%; border-radius: 12px;
+    object-fit: contain; display: block; }
+  .viewer-content video { max-width: 100%; max-height: 100%; border-radius: 12px;
+    display: block; background: #000; }
+  .viewer-close { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 16px;
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.1);
+    color: #fff; font-size: 24px; line-height: 1; display: flex;
+    align-items: center; justify-content: center; cursor: pointer; z-index: 2; }
+  .viewer-del { position: absolute; top: calc(14px + env(safe-area-inset-top)); left: 16px;
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 1px solid rgba(248,113,113,.35); background: rgba(248,113,113,.14);
+    color: #f87171; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 2; }
+  .viewer-del:active { transform: scale(.94); }
+
+  .status { display: none; align-items: center; justify-content: center; gap: 9px;
+    margin-top: 14px; padding: 12px 14px; border-radius: 12px;
+    font-size: 13.5px; font-weight: 600; text-align: center; line-height: 1.35; }
+  .status.show { display: flex; }
+  .status.loading { background: rgba(255,159,10,.1); border: 1px solid rgba(255,159,10,.28); color: #ffb84d; }
+  .status.success { background: rgba(52,211,153,.1); border: 1px solid rgba(74,222,128,.28); color: #4ade80; }
+  .status.error   { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.28); color: #f87171; }
+  .spinner { width: 15px; height: 15px; flex: 0 0 auto; border-radius: 50%;
+    border: 2px solid rgba(255,184,77,.25); border-top-color: #ffb84d;
+    animation: spin .75s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .u-hidden { display: none !important; }
+
+  /* ---------- modal ---------- */
+  .modal { position: absolute; inset: 0; z-index: 80; display: flex;
+    align-items: center; justify-content: center; padding: 24px;
+    background: rgba(4,6,9,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility .2s; }
+  .modal.show { opacity: 1; visibility: visible; }
+  .modal-card { width: 100%; max-width: 330px; background: #151a22;
+    border: 1px solid rgba(255,255,255,.1); border-radius: 20px;
+    padding: 22px 20px 18px; box-shadow: 0 30px 80px rgba(0,0,0,.7); text-align: center; }
+  .modal-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; color: #f4f7fb; }
+  .modal-card p { font-size: 13.5px; line-height: 1.55; color: #8b95a5; margin-bottom: 18px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-btn { flex: 1; padding: 13px; border-radius: 13px; border: 0;
+    font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer;
+    transition: transform .09s ease, filter .15s ease; }
+  .modal-btn:active { transform: scale(.96); }
+  .modal-btn.ghost { background: rgba(255,255,255,.07); color: #cfd6e0;
+    border: 1px solid rgba(255,255,255,.1); }
+  .modal-btn.primary { background: linear-gradient(180deg,#ffc878,#ff9f0a); color: #1b1206; }
+  .modal-btn.danger { background: linear-gradient(180deg,#f87171,#dc2626); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <section id="calculator" class="panel">
+    <div class="screen">
+      <div class="history" id="history"></div>
+      <div class="display" id="display">0</div>
+    </div>
+    <div class="keys" id="keys">
+      <button class="key fn" data-action="clear">C</button>
+      <button class="key fn" data-action="back">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 5H9l-7 7 7 7h11a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/>
+          <line x1="17" y1="9" x2="12" y2="14"/><line x1="12" y1="9" x2="17" y2="14"/>
+        </svg>
+      </button>
+      <button class="key fn" data-action="percent">%</button>
+      <button class="key op" data-action="operator" data-value="/">&divide;</button>
+      <button class="key" data-action="num" data-value="7">7</button>
+      <button class="key" data-action="num" data-value="8">8</button>
+      <button class="key" data-action="num" data-value="9">9</button>
+      <button class="key op" data-action="operator" data-value="*">&times;</button>
+      <button class="key" data-action="num" data-value="4">4</button>
+      <button class="key" data-action="num" data-value="5">5</button>
+      <button class="key" data-action="num" data-value="6">6</button>
+      <button class="key op" data-action="operator" data-value="-">&minus;</button>
+      <button class="key" data-action="num" data-value="1">1</button>
+      <button class="key" data-action="num" data-value="2">2</button>
+      <button class="key" data-action="num" data-value="3">3</button>
+      <button class="key op" data-action="operator" data-value="+">+</button>
+      <button class="key zero" data-action="num" data-value="0">0</button>
+      <button class="key" data-action="num" data-value=".">.</button>
+      <button class="key eq" data-action="equals">=</button>
+    </div>
+  </section>
+
+  <section id="vault" class="panel hidden">
+    <header class="vault-header">
+      <button class="back-btn" id="backBtn">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+        </svg>
+        Lock
+      </button>
+      <div class="vault-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2.5"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Secret Vault
+      </div>
+    </header>
+
+    <nav class="vault-tabs">
+      <button class="tab active" data-tab="upload" id="tabUpload">Upload</button>
+      <button class="tab" data-tab="gallery" id="tabGallery">My Files</button>
+    </nav>
+
+    <div class="vault-body">
+      <div class="pane active" id="pane-upload">
+        <div class="upload-card">
+          <div class="card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.5 19a4.5 4.5 0 0 0 .4-8.98A6 6 0 0 0 6.2 9.4 4.3 4.3 0 0 0 6.5 19h11z"/>
+              <path d="M12 12v6"/><path d="M9.5 14.5 12 12l2.5 2.5"/>
+            </svg>
+          </div>
+          <h2>Private Upload</h2>
+          <!-- Removed the text paragraph as requested -->
+          <input type="file" id="fileInput" accept="image/*, video/*" hidden>
+          <label class="pick-btn" for="fileInput">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/>
+            </svg>
+            Choose File
+          </label>
+          <div class="file-name" id="fileName">No file selected</div>
+          <button class="upload-btn" id="uploadBtn" disabled>Save to My Space</button>
+          <div class="status" id="status"></div>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-gallery">
+        <div class="gallery-top">
+          <span class="gallery-count" id="galleryCount">—</span>
+          <button class="refresh-btn" id="refreshBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Refresh
+          </button>
+        </div>
+        <div class="gallery-loading u-hidden" id="galleryLoading">
+          <span class="spinner"></span> Loading your files…
+        </div>
+        <div class="gallery-error u-hidden" id="galleryError"></div>
+        <div class="gallery-empty u-hidden" id="galleryEmpty">
+          <span class="big">🗂️</span>
+          No files in this space yet.<br>Add some from the Upload tab — they stay on this device and open offline.
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="viewer" id="viewer">
+    <button class="viewer-del" id="viewerDel" title="Delete">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6M14 11v6"/>
+        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      </svg>
+    </button>
+    <button class="viewer-close" id="viewerClose">&times;</button>
+    <div class="viewer-content" id="viewerContent"></div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <h3 id="modalTitle"></h3>
+      <p id="modalText"></p>
+      <div class="modal-actions">
+        <button class="modal-btn ghost" id="modalCancel">Cancel</button>
+        <button class="modal-btn primary" id="modalOk">OK</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============================================================
+     CONFIG
+     ============================================================ */
+  const USERS_KEY      = "vaultUsers";      // [{ pin, createdAt }]
+  const LEGACY_PIN_KEY = "vaultPin";        
+  const DB_NAME        = "calcVaultDB";
+  const DB_VERSION     = 1;
+  const LS_FILES_KEY   = "vaultLocalFiles"; // Fallback storage
+
+  /* ============================================================
+     ELEMENTS
+     ============================================================ */
+  const calcPanel  = document.getElementById("calculator");
+  const vaultPanel = document.getElementById("vault");
+  const displayEl  = document.getElementById("display");
+  const historyEl  = document.getElementById("history");
+  const keysEl     = document.getElementById("keys");
+
+  const backBtn    = document.getElementById("backBtn");
+  const fileInput  = document.getElementById("fileInput");
+  const fileNameEl = document.getElementById("fileName");
+  const uploadBtn  = document.getElementById("uploadBtn");
+  const statusEl   = document.getElementById("status");
+
+  const tabUpload  = document.getElementById("tabUpload");
+  const tabGallery = document.getElementById("tabGallery");
+  const paneUpload = document.getElementById("pane-upload");
+  const paneGallery= document.getElementById("pane-gallery");
+
+  const galleryGrid    = document.getElementById("galleryGrid");
+  const galleryCount   = document.getElementById("galleryCount");
+  const galleryLoading = document.getElementById("galleryLoading");
+  const galleryEmpty   = document.getElementById("galleryEmpty");
+  const galleryError   = document.getElementById("galleryError");
+  const refreshBtn     = document.getElementById("refreshBtn");
+
+  const viewer        = document.getElementById("viewer");
+  const viewerContent = document.getElementById("viewerContent");
+  const viewerClose   = document.getElementById("viewerClose");
+  const viewerDel     = document.getElementById("viewerDel");
+
+  const modal       = document.getElementById("modal");
+  const modalTitle  = document.getElementById("modalTitle");
+  const modalText   = document.getElementById("modalText");
+  const modalOk     = document.getElementById("modalOk");
+  const modalCancel = document.getElementById("modalCancel");
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  let expr = "";
+  let justEvaluated = false;
+  let vaultOpen = false;
+  let currentPin = null;
+  let selectedFile = null;
+  let currentViewFile = null;
+  let galleryUrls = [];
+  let viewerUrl = null;
+
+  /* ============================================================
+     MULTI-USER MANAGEMENT
+     ============================================================ */
+  function getUsers() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+      return Array.isArray(raw) ? raw.filter(function (u) { return u && typeof u.pin === "string"; }) : [];
+    } catch (e) { return []; }
+  }
+  function saveUsers(list) {
+    try { localStorage.setItem(USERS_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function findUser(pin) {
+    return getUsers().filter(function (u) { return u.pin === pin; })[0] || null;
+  }
+  function addUser(pin) {
+    const list = getUsers();
+    const user = { pin: pin, createdAt: Date.now() };
+    list.push(user);
+    saveUsers(list);
+    return user;
+  }
+
+  (function migrateLegacyPin() {
+    try {
+      const legacy = localStorage.getItem(LEGACY_PIN_KEY);
+      if (legacy && /^\d{4,10}$/.test(legacy) && !findUser(legacy)) addUser(legacy);
+      if (legacy !== null) localStorage.removeItem(LEGACY_PIN_KEY);
+    } catch (e) {}
+  })();
+
+  /* ============================================================
+     OFFLINE STORAGE (IndexedDB with LocalStorage fallback)
+     ============================================================ */
+  let idb = null;
+  let idbTried = false;
+
+  function openDB() {
+    if (idbTried) return Promise.resolve(idb);
+    idbTried = true;
+    return new Promise(function (resolve) {
+      let req;
+      try { req = indexedDB.open(DB_NAME, DB_VERSION); }
+      catch (e) { resolve(null); return; }
+
+      req.onupgradeneeded = function () {
+        const db = req.result;
+        if (!db.objectStoreNames.contains("files")) {
+          db.createObjectStore("files", { keyPath: "id" });
+        }
+      };
+      req.onsuccess = function () { idb = req.result; resolve(idb); };
+      req.onerror   = function () { resolve(null); };
+      req.onblocked = function () { resolve(null); };
+    });
+  }
+
+  function blobToDataURL(blob) {
+    return new Promise(function (resolve, reject) {
+      const r = new FileReader();
+      r.onload  = function () { resolve(String(r.result || "")); };
+      r.onerror = function () { reject(r.error || new Error("read error")); };
+      r.readAsDataURL(blob);
+    });
+  }
+  async function dataURLToBlob(url) {
+    const res = await fetch(url);
+    return await res.blob();
+  }
+
+  function lsFiles() {
+    try {
+      const a = JSON.parse(localStorage.getItem(LS_FILES_KEY) || "[]");
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+  function lsSave(arr) {
+    localStorage.setItem(LS_FILES_KEY, JSON.stringify(arr));
+  }
+
+  async function storeFile(rec) {
+    const db = await openDB();
+    if (db) {
+      return new Promise(function (resolve, reject) {
+        try {
+          const tx = db.transaction("files", "readwrite");
+          const req = tx.objectStore("files").put(rec);
+          req.onerror = function () { reject(req.error || new Error("Write error")); };
+          tx.oncomplete = function () { resolve(); };
+          tx.onerror = function () { reject(tx.error || new Error("Transaction error")); };
+          tx.onabort = function () { reject(tx.error || new Error("Storage full")); };
+        } catch (e) { reject(e); }
+      });
+    } else {
+      // LocalStorage Fallback
+      const arr = lsFiles();
+      arr.push({
+        id: rec.id, owner: rec.owner, name: rec.name, mimeType: rec.mimeType,
+        size: rec.size, createdAt: rec.createdAt,
+        blobData: await blobToDataURL(rec.blob),
+        thumbData: rec.thumb ? await blobToDataURL(rec.thumb) : null
+      });
+      lsSave(arr);
+    }
+  }
+
+  async function listStoredFiles(owner) {
+    const db = await openDB();
+    if (db) {
+      return new Promise(function (resolve, reject) {
+        try {
+          const tx = db.transaction("files", "readonly");
+          const req = tx.objectStore("files").getAll(); // Safer than using index
+          req.onsuccess = function () {
+            const all = req.result || [];
+            const filtered = all.filter(function(f) { return f.owner === owner; });
+            resolve(filtered);
+          };
+          req.onerror = function () { reject(req.error); };
+        } catch (e) { reject(e); }
+      });
+    } else {
+      const rows = lsFiles().filter(function (f) { return f.owner === owner; });
+      const out = [];
+      for (let i = 0; i < rows.length; i++) {
+        const f = rows[i];
+        out.push({
+          id: f.id, owner: f.owner, name: f.name, mimeType: f.mimeType,
+          size: f.size, createdAt: f.createdAt,
+          blob: await dataURLToBlob(f.blobData),
+          thumb: f.thumbData ? await dataURLToBlob(f.thumbData) : null
+        });
+      }
+      return out;
+    }
+  }
+
+  async function deleteStoredFile(id) {
+    const db = await openDB();
+    if (db) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction("files", "readwrite");
+        tx.objectStore("files").delete(id);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    } else {
+      lsSave(lsFiles().filter(function (f) { return f.id !== id; }));
+    }
+  }
+
+  /* ============================================================
+     MODAL
+     ============================================================ */
+  let modalResolve = null;
+  function askModal(title, text, okLabel, danger) {
+    return new Promise(function (resolve) {
+      modalTitle.textContent = title;
+      modalText.textContent  = text;
+      modalOk.textContent    = okLabel || "OK";
+      modalOk.className      = "modal-btn " + (danger ? "danger" : "primary");
+      modal.classList.add("show");
+      modalResolve = resolve;
+    });
+  }
+  function closeModal(val) {
+    modal.classList.remove("show");
+    if (modalResolve) { const r = modalResolve; modalResolve = null; r(val); }
+  }
+  modalOk.addEventListener("click", function () { closeModal(true); });
+  modalCancel.addEventListener("click", function () { closeModal(false); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) closeModal(false); });
+
+  /* ============================================================
+     CALCULATOR
+     ============================================================ */
+  function prettyExpr(s) {
+    return s.replace(/\*/g, "\u00D7").replace(/\//g, "\u00F7").replace(/-/g, "\u2212");
+  }
+  function formatNumber(n) {
+    if (!isFinite(n)) return "Error";
+    const r = Math.round(n * 1e10) / 1e10;
+    let s = String(r);
+    if (s.length > 15) s = r.toExponential(8);
+    return s;
+  }
+  function fitDisplay() {
+    const len = (displayEl.textContent || "0").length;
+    const appW = Math.min(window.innerWidth, 430);
+    const base = Math.max(28, Math.min(52, appW * 0.125));
+    let size = base;
+    if (len > 8) size = Math.max(16, base * Math.pow(8 / len, 0.62));
+    displayEl.style.fontSize = size.toFixed(1) + "px";
+  }
+  function updateDisplay() {
+    displayEl.textContent = expr === "" ? "0" : prettyExpr(expr);
+    fitDisplay();
+  }
+  function safeEval(expression) {
+    if (!/^[-+*/.\d\s]+$/.test(expression)) return null;
+    try {
+      const val = Function('"use strict"; return (' + expression + ");")();
+      if (typeof val !== "number" || !isFinite(val)) return null;
+      return val;
+    } catch (e) { return null; }
+  }
+
+  function inputDigit(d) {
+    if (justEvaluated) { expr = ""; justEvaluated = false; }
+    const m = expr.match(/(\d*\.?\d*)$/);
+    const lastNum = m ? m[1] : "";
+    if (lastNum === "0") expr = expr.slice(0, -1) + d;
+    else expr += d;
+    if (expr.length > 40) expr = expr.slice(0, 40);
+    updateDisplay();
+  }
+  function inputDot() {
+    if (justEvaluated) { expr = ""; justEvaluated = false; }
+    const m = expr.match(/(\d*\.?\d*)$/);
+    const lastNum = m ? m[1] : "";
+    if (lastNum.indexOf(".") !== -1) return;
+    expr += lastNum === "" ? "0." : ".";
+    updateDisplay();
+  }
+  function inputOperator(op) {
+    justEvaluated = false;
+    if (expr === "") { if (op === "-") { expr = "-"; updateDisplay(); } return; }
+    const last = expr.slice(-1);
+    if ("+-*/".indexOf(last) !== -1) expr = expr.slice(0, -1) + op;
+    else if (last === ".") expr = expr.slice(0, -1) + op;
+    else expr += op;
+    updateDisplay();
+  }
+  function inputPercent() {
+    justEvaluated = false;
+    const m = expr.match(/(\d*\.?\d+)$/);
+    if (!m) return;
+    const num = parseFloat(m[1]) / 100;
+    expr = expr.slice(0, m.index) + formatNumber(num);
+    updateDisplay();
+  }
+  function backspace() {
+    if (justEvaluated) { expr = ""; justEvaluated = false; updateDisplay(); return; }
+    expr = expr.slice(0, -1);
+    updateDisplay();
+  }
+  function clearAll() {
+    expr = ""; justEvaluated = false; historyEl.textContent = ""; updateDisplay();
+  }
+
+  function handleEquals() {
+    if (expr === "") return;
+    if (justEvaluated) return;
+
+    if (/^\d{4,10}$/.test(expr)) {
+      const pin = expr;
+      if (findUser(pin)) {
+        clearAll();
+        openVault(pin);
+        return;
+      }
+      askModal(
+        "Create a private space?",
+        "No space is registered with PIN " + pin + ". Create a new private space locked by this PIN?",
+        "Create"
+      ).then(function (ok) {
+        if (!ok) return;
+        addUser(pin);
+        clearAll();
+        openVault(pin);
+      });
+      return;
+    }
+
+    const clean = expr.replace(/[+\-*/.]+$/, "");
+    const result = safeEval(clean);
+    if (result === null) {
+      historyEl.textContent = prettyExpr(expr) + " =";
+      displayEl.textContent = "Error";
+      displayEl.style.fontSize = "42px";
+      expr = ""; justEvaluated = true;
+      return;
+    }
+    historyEl.textContent = prettyExpr(clean) + " =";
+    expr = formatNumber(result);
+    justEvaluated = true;
+    updateDisplay();
+  }
+
+  keysEl.addEventListener("click", function (e) {
+    const btn = e.target.closest(".key");
+    if (!btn) return;
+    switch (btn.dataset.action) {
+      case "num":      inputDigit(btn.dataset.value); break;
+      case "operator": inputOperator(btn.dataset.value); break;
+      case "equals":   handleEquals(); break;
+      case "clear":    clearAll(); break;
+      case "back":     backspace(); break;
+      case "percent":  inputPercent(); break;
+    }
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch (err) {}
+  });
+
+  window.addEventListener("keydown", function (e) {
+    if (modal.classList.contains("show")) {
+      if (e.key === "Escape") closeModal(false);
+      return;
+    }
+    if (viewer.classList.contains("show")) {
+      if (e.key === "Escape") closeViewerFromButton();
+      return;
+    }
+    if (vaultOpen) return;
+    const k = e.key;
+    if (/^[0-9]$/.test(k)) inputDigit(k);
+    else if (k === "." || k === ",") inputDot();
+    else if (k === "+" || k === "-" || k === "*" || k === "/") inputOperator(k);
+    else if (k === "Enter" || k === "=") { e.preventDefault(); handleEquals(); }
+    else if (k === "Backspace") { e.preventDefault(); backspace(); }
+    else if (k === "Escape") clearAll();
+    else if (k.toLowerCase() === "c") clearAll();
+  });
+  window.addEventListener("resize", fitDisplay);
+
+  /* ============================================================
+     VAULT OPEN / CLOSE
+     ============================================================ */
+  function openVault(pin) {
+    currentPin = pin;
+    expr = ""; justEvaluated = false; historyEl.textContent = ""; updateDisplay();
+
+    resetPicker();
+    setStatus("", "");
+
+    calcPanel.classList.add("hidden");
+    vaultPanel.classList.remove("hidden");
+    vaultOpen = true;
+
+    switchTab("gallery");
+
+    try {
+      if (navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist().catch(function () {});
+      }
+    } catch (e) {}
+
+    try { history.pushState({ vault: true }, ""); } catch (err) {}
+  }
+
+  function closeVault() {
+    currentPin = null;
+    vaultPanel.classList.add("hidden");
+    calcPanel.classList.remove("hidden");
+    vaultOpen = false;
+
+    closeViewer(true);
+    clearGalleryUrls();
+    galleryGrid.innerHTML = "";
+    galleryError.classList.add("u-hidden");
+    resetPicker();
+    setStatus("", "");
+    switchTab("upload");
+
+    expr = ""; justEvaluated = false; historyEl.textContent = ""; updateDisplay();
+  }
+
+  backBtn.addEventListener("click", function () {
+    if (history.state && history.state.vault) history.back();
+    else closeVault();
+  });
+
+  /* ============================================================
+     TABS
+     ============================================================ */
+  function switchTab(name) {
+    tabUpload.classList.toggle("active",  name === "upload");
+    tabGallery.classList.toggle("active", name === "gallery");
+    paneUpload.classList.toggle("active", name === "upload");
+    paneGallery.classList.toggle("active", name === "gallery");
+    if (name === "gallery") loadGallery();
+  }
+  tabUpload.addEventListener("click",  function () { switchTab("upload"); });
+  tabGallery.addEventListener("click", function () { switchTab("gallery"); });
+
+  /* ============================================================
+     HELPERS
+     ============================================================ */
+  function setStatus(type, message) {
+    statusEl.className = "status";
+    if (!type) { statusEl.innerHTML = ""; return; }
+    statusEl.classList.add("show", type);
+    if (type === "loading") {
+      statusEl.innerHTML = '<span class="spinner"></span><span>' + escapeHtml(message) + "</span>";
+    } else {
+      const icon = type === "success" ? "\u2713" : type === "error" ? "\u26A0" : "";
+      statusEl.innerHTML = '<span class="status-icon">' + icon + "</span><span>" + escapeHtml(message) + "</span>";
+    }
+  }
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function formatSize(bytes) {
+    const n = Number(bytes) || 0;
+    if (n <= 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    let i = 0, v = n;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return (i > 0 && v < 10 ? v.toFixed(1) : Math.round(v)) + units[i];
+  }
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+  }
+
+  /* ============================================================
+     THUMBNAIL GENERATION
+     ============================================================ */
+  function makeThumb(file) {
+    if (/^image\//i.test(file.type)) return imageThumb(file);
+    if (/^video\//i.test(file.type)) return videoThumb(file);
+    return Promise.resolve(null);
+  }
+  function imageThumb(file) {
+    return new Promise(function (resolve) {
+      try {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = function () {
+          try {
+            const MAX = 400;
+            const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+            const w = Math.max(1, Math.round(img.width * scale));
+            const h = Math.max(1, Math.round(img.height * scale));
+            const c = document.createElement("canvas");
+            c.width = w; c.height = h;
+            c.getContext("2d").drawImage(img, 0, 0, w, h);
+            c.toBlob(function (b) { URL.revokeObjectURL(url); resolve(b); }, "image/jpeg", 0.8);
+          } catch (e) { URL.revokeObjectURL(url); resolve(null); }
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+      } catch (e) { resolve(null); }
+    });
+  }
+  function videoThumb(file) {
+    return new Promise(function (resolve) {
+      try {
+        const url = URL.createObjectURL(file);
+        const v = document.createElement("video");
+        let done = false;
+        const finish = function (blob) {
+          if (done) return;
+          done = true;
+          try { URL.revokeObjectURL(url); } catch (e) {}
+          resolve(blob);
+        };
+        const timer = setTimeout(function () { finish(null); }, 4000);
+
+        v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+        v.onloadeddata = function () {
+          try { v.currentTime = Math.min(0.2, (v.duration || 1) / 2); }
+          catch (e) { clearTimeout(timer); finish(null); }
+        };
+        v.onseeked = function () {
+          try {
+            const MAX = 400;
+            const scale = Math.min(1, MAX / Math.max(v.videoWidth, v.videoHeight));
+            const c = document.createElement("canvas");
+            c.width  = Math.max(1, Math.round(v.videoWidth * scale));
+            c.height = Math.max(1, Math.round(v.videoHeight * scale));
+            c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+            c.toBlob(function (b) { clearTimeout(timer); finish(b); }, "image/jpeg", 0.75);
+          } catch (e) { clearTimeout(timer); finish(null); }
+        };
+        v.onerror = function () { clearTimeout(timer); finish(null); };
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  /* ============================================================
+     FILE PICKER
+     ============================================================ */
+  function resetPicker() {
+    selectedFile = null;
+    fileInput.value = "";
+    fileNameEl.textContent = "No file selected";
+    fileNameEl.classList.remove("has-file");
+    uploadBtn.disabled = true;
+  }
+
+  fileInput.addEventListener("change", function () {
+    selectedFile = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    if (selectedFile) {
+      fileNameEl.textContent = selectedFile.name;
+      fileNameEl.classList.add("has-file");
+      uploadBtn.disabled = false;
+    } else {
+      resetPicker();
+    }
+    setStatus("", "");
+  });
+
+  /* ============================================================
+     SAVE FILE (Offline)
+     ============================================================ */
+  uploadBtn.addEventListener("click", async function () {
+    if (!selectedFile || !currentPin) return;
+
+    uploadBtn.disabled = true;
+    setStatus("loading", "Saving to your private space…");
+
+    try {
+      const thumb = await makeThumb(selectedFile);
+      const rec = {
+        id: uid(),
+        owner: currentPin,
+        name: selectedFile.name,
+        mimeType: selectedFile.type || "application/octet-stream",
+        size: selectedFile.size,
+        blob: selectedFile,
+        thumb: thumb || null,
+        createdAt: Date.now()
+      };
+
+      await storeFile(rec);
+
+      setStatus("success", "Saved! It is now available offline in My Files.");
+      resetPicker();
+
+      // Refresh gallery in background
+      listStoredFiles(currentPin).then(function (files) {
+        files.sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+        renderGallery(files);
+      }).catch(function () {});
+    } catch (err) {
+      console.error("[Vault save]", err);
+      let msg = "Could not save the file.";
+      if (err && (err.name === "QuotaExceededError" || /quota|storage full/i.test(String(err.message)))) {
+        msg = "Not enough free storage on this device. Delete some files and try again.";
+      } else if (err && err.message) {
+        msg = "Could not save: " + err.message;
+      }
+      setStatus("error", msg);
+      uploadBtn.disabled = false;
+    }
+  });
+
+  /* ============================================================
+     GALLERY
+     ============================================================ */
+  function clearGalleryUrls() {
+    galleryUrls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) {} });
+    galleryUrls = [];
+  }
+
+  function showGalleryError(msg) {
+    galleryError.textContent = msg;
+    galleryError.classList.remove("u-hidden");
+    galleryGrid.innerHTML = "";
+    galleryEmpty.classList.add("u-hidden");
+    galleryCount.textContent = "—";
+  }
+
+  async function loadGallery() {
+    if (!currentPin) return;
+
+    galleryError.classList.add("u-hidden");
+    galleryEmpty.classList.add("u-hidden");
+    galleryLoading.classList.remove("u-hidden");
+    clearGalleryUrls();
+    galleryGrid.innerHTML = "";
+    galleryCount.textContent = "Loading…";
+
+    try {
+      const files = await listStoredFiles(currentPin);
+      files.sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+      renderGallery(files);
+    } catch (err) {
+      console.error("[Vault gallery]", err);
+      showGalleryError("Could not open your files: " + (err && err.message ? err.message : "unknown error"));
+    } finally {
+      galleryLoading.classList.add("u-hidden");
+    }
+  }
+
+  function renderGallery(files) {
+    clearGalleryUrls();
+    galleryGrid.innerHTML = "";
+
+    const n = files.length;
+    let total = 0;
+    files.forEach(function (f) { total += Number(f.size) || 0; });
+
+    galleryCount.textContent = n === 0
+      ? "No files"
+      : (n + (n === 1 ? " file" : " files") + " \u2022 " + formatSize(total));
+
+    if (n === 0) {
+      galleryEmpty.classList.remove("u-hidden");
+      return;
+    }
+
+    files.forEach(function (f) {
+      if (!f || !f.id) return;
+      const isVideo = /^video\//i.test(f.mimeType || "");
+
+      const thumb = document.createElement("div");
+      thumb.className = "thumb";
+
+      const srcBlob = f.thumb || f.blob;
+      if (srcBlob) {
+        const url = URL.createObjectURL(srcBlob);
+        galleryUrls.push(url);
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = f.name || "file";
+        img.loading = "lazy";
+        img.onerror = function () { this.style.visibility = "hidden"; };
+        thumb.appendChild(img);
+      } else {
+        const ph = document.createElement("div");
+        ph.className = "thumb-ph";
+        ph.textContent = isVideo ? "\uD83C\uDFAC" : "\uD83D\uDDBC\uFE0F";
+        thumb.appendChild(ph);
+      }
+
+      if (isVideo) {
+        const play = document.createElement("div");
+        play.className = "play";
+        play.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        thumb.appendChild(play);
+      }
+
+      if (f.size) {
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        badge.textContent = formatSize(f.size);
+        thumb.appendChild(badge);
+      }
+
+      thumb.addEventListener("click", function () { openViewer(f, isVideo); });
+      galleryGrid.appendChild(thumb);
+    });
+  }
+
+  refreshBtn.addEventListener("click", loadGallery);
+
+  /* ============================================================
+     VIEWER
+     ============================================================ */
+  function openViewer(file, isVideo) {
+    closeViewer(true);
+    currentViewFile = file;
+
+    if (isVideo) {
+      viewerUrl = URL.createObjectURL(file.blob);
+      const v = document.createElement("video");
+      v.controls = true;
+      v.autoplay = true;
+      v.playsInline = true;
+      v.setAttribute("playsinline", "");
+      v.src = viewerUrl;
+      viewerContent.appendChild(v);
+    } else {
+      viewerUrl = URL.createObjectURL(file.blob);
+      const img = document.createElement("img");
+      img.alt = file.name || "";
+      img.src = viewerUrl;
+      viewerContent.appendChild(img);
+    }
+
+    viewer.classList.add("show");
+    try { history.pushState({ viewer: true }, ""); } catch (err) {}
+  }
+
+  function closeViewer(immediate) {
+    viewer.classList.remove("show");
+    viewerContent.innerHTML = "";
+    if (viewerUrl) {
+      try { URL.revokeObjectURL(viewerUrl); } catch (e) {}
+      viewerUrl = null;
+    }
+    currentViewFile = null;
+    if (immediate) viewer.classList.remove("show");
+  }
+
+  function closeViewerFromButton() {
+    if (history.state && history.state.viewer) history.back();
+    else closeViewer(true);
+  }
+  viewerClose.addEventListener("click", closeViewerFromButton);
+
+  viewerDel.addEventListener("click", async function () {
+    if (!currentViewFile) return;
+    const name = currentViewFile.name || "This file";
+    const ok = await askModal(
+      "Delete file?",
+      "\u201C" + name + "\u201D will be permanently removed from this device.",
+      "Delete",
+      true
+    );
+    if (!ok) return;
+    try {
+      await deleteStoredFile(currentViewFile.id);
+      closeViewer(true);
+      loadGallery();
+    } catch (e) {
+      await askModal("Delete failed", "Could not delete this file. Please try again.", "OK");
+    }
+  });
+
+  /* ============================================================
+     HISTORY / BACK
+     ============================================================ */
+  window.addEventListener("popstate", function () {
+    if (modal.classList.contains("show")) { closeModal(false); return; }
+    if (viewer.classList.contains("show")) { closeViewer(true); return; }
+    if (vaultOpen) closeVault();
+  });
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  updateDisplay();
+  fitDisplay();
+  openDB();
+})();
+</script>
+</body>
+</html>
