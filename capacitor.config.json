@@ -1,7 +1,6 @@
-
 {
   "appId": "com.secretcalculator.vault",
-  "appName": "Secret Calculator",
+  "appName": "Calculator",
   "webDir": "www",
   "server": {
     "androidScheme": "https"
