@@ -1,10 +1,10 @@
+
 name: Build Calculator APK
 
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -28,16 +28,32 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install dependencies
+      - name: Install project dependencies
         run: npm install
+
+      - name: Install matching Capacitor Media plugin and bundler
+        shell: bash
+        run: |
+          CAP_MAJOR=$(node -p "require('@capacitor/core/package.json').version.split('.')[0]")
+          if [ "$CAP_MAJOR" = "8" ]; then
+            npm install @capacitor-community/media@^9
+          elif [ "$CAP_MAJOR" = "7" ]; then
+            npm install @capacitor-community/media@^8
+          elif [ "$CAP_MAJOR" = "6" ]; then
+            npm install @capacitor-community/media@^7
+          else
+            echo "Unsupported Capacitor major version: $CAP_MAJOR"
+            exit 1
+          fi
+          npm install --save-dev esbuild
+
+      - name: Bundle native Gallery bridge
+        run: npx esbuild native-gallery.js --bundle --format=esm --outfile=www/native-gallery.bundle.js
 
       - name: Add Android platform
         run: npx cap add android
 
-      - name: Generate app icons
-        run: npx capacitor-assets generate --android
-
-      - name: Sync Android
+      - name: Sync Android plugins
         run: npx cap sync android
 
       - name: Setup Gradle
