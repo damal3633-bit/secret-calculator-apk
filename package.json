@@ -1,1 +1,14 @@
 
+{
+  "name": "secret-calculator-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Secret Calculator HTML wrapped as an Android app with Capacitor",
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/android": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}
