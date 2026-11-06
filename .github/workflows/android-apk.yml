@@ -1,6 +1,4 @@
-
-
-name: Build Secret Calculator APK
+name: Build Calculator APK
 
 on:
   workflow_dispatch:
@@ -12,19 +10,19 @@ permissions:
   contents: read
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout project
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Set up Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -33,21 +31,25 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Generate Android project
+      - name: Add Android platform
         run: npx cap add android
 
-      - name: Sync Android project
+      - name: Generate app icons
+        run: npx capacitor-assets generate --android
+
+      - name: Sync Android
         run: npx cap sync android
 
-      - name: Set up Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build APK
         working-directory: android
-        run: chmod +x ./gradlew && ./gradlew assembleDebug
+        run: chmod +x gradlew && ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Secret-Calculator-debug-APK
+          name: Calculator-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          
